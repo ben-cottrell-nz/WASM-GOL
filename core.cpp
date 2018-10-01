@@ -147,7 +147,7 @@ int main()
   copy_glider_pattern(g_ctx->cells_prev_data);
 
   const int simulate_infinite_loop = 1; // call the function repeatedly
-  const int fps = -1;
+  const int fps = 15;
   emscripten_set_main_loop_arg(mainloop, &g_ctx, fps, simulate_infinite_loop);
   
   free2DArray(g_ctx->cells_prev_data, MAX_ROWS, MAX_COLS);

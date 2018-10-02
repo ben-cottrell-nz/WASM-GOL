@@ -1,8 +1,11 @@
 #include <SDL2/SDL.h>
 #include <emscripten.h>
+#include <emscripten/bind.h>
 #include <cstdlib>
 
 const int MAX_ROWS = 32, MAX_COLS = 32;
+
+using namespace emscripten;
 
 struct context
 {
@@ -49,8 +52,6 @@ inline void free2DArray(T** &dest, int nrows, int ncols)
     dest = 0;
 }
 
-extern "C" void reset();
-
 void reset()
 {
   g_ctx->generation = 0;
@@ -60,9 +61,14 @@ void reset()
       g_ctx->cells_next_data[y][x] = 0;
     }
   }
+  copy_glider_pattern(g_ctx->cells_prev_data);
   EM_ASM({
     Module.updateCounter($0);
   }, g_ctx->generation);
+}
+
+EMSCRIPTEN_BINDINGS(my_module) {
+    function("reset", &reset);
 }
 
 void next_generation(context *arg)

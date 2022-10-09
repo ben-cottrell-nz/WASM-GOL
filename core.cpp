@@ -2,6 +2,8 @@
 #include <emscripten.h>
 #include <emscripten/bind.h>
 #include <cstdlib>
+#include <cmath>
+#include <cstdlib>
 
 const int MAX_ROWS = 32, MAX_COLS = 32;
 
@@ -10,11 +12,14 @@ using namespace emscripten;
 struct context
 {
   SDL_Renderer *renderer;
+  int window_width;
+  int window_height;
   int generation;
   int **cells_prev_data;
   int **cells_next_data;
   int cell_width;
   int cell_height;
+  bool playing = true;
 } *g_ctx;
 
 void copy_glider_pattern(int **data)
@@ -67,8 +72,14 @@ void reset()
   }, g_ctx->generation);
 }
 
+void toggle_play_pause()
+{
+	g_ctx->playing = !g_ctx->playing;
+}
+
 EMSCRIPTEN_BINDINGS(my_module) {
     function("reset", &reset);
+    function("togglePlayPause", &toggle_play_pause);
 }
 
 void next_generation(context *arg)
@@ -108,10 +119,26 @@ void next_generation(context *arg)
   }
 }
 
+uint8_t rand_range(uint8_t min, uint8_t max)
+{
+	return min + (rand()%max-min);
+}
+
 void mainloop(void *arg)
 {
   SDL_Renderer *renderer = g_ctx->renderer;
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+  if (!g_ctx->playing)
+  {
+  	return;
+  }
+  int mx, my, mbuttons;
+  mbuttons = SDL_GetMouseState(&mx, &my);
+  if ((mbuttons & SDL_BUTTON_LMASK) != 0) {
+		int y = int((float)my/g_ctx->window_height*MAX_ROWS);
+		int x = int((float)mx/g_ctx->window_width*MAX_COLS);
+		g_ctx->cells_next_data[y][x] = (g_ctx->cells_next_data[y][x] == 1) ? 0 : 1;
+  }
   SDL_RenderClear(renderer);
   SDL_Rect cr;
   cr.w = g_ctx->cell_width;
@@ -122,7 +149,7 @@ void mainloop(void *arg)
     for (int x=0; x < MAX_COLS; x++) {
       cr.x = x * g_ctx->cell_width;
       if (g_ctx->cells_next_data[y][x] == 1) {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_SetRenderDrawColor(renderer, rand_range(60,190), rand_range(60,190), rand_range(60,190), rand_range(60,190));
       } else if (g_ctx->cells_next_data[y][x] == 0) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
       }
@@ -143,7 +170,7 @@ int main()
   SDL_Window *window;
   SDL_Renderer *renderer;
   SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer);
-
+	SDL_GetWindowSize(window, &g_ctx->window_width, &g_ctx->window_height);
   g_ctx->renderer = renderer;
   g_ctx->generation = 0;
   g_ctx->cell_width = WINDOW_WIDTH / MAX_COLS;
